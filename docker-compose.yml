@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: actionpad-db
+    environment:
+      POSTGRES_USER: actionpad
+      POSTGRES_PASSWORD: actionpad_dev_password
+      POSTGRES_DB: actionpad
+    ports:
+      - "5432:5432"
+    volumes:
+      - actionpad_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  actionpad_data:
