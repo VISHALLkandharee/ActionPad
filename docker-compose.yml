@@ -12,5 +12,16 @@ services:
       - actionpad_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://actionpad:actionpad_dev_password@db:5432/actionpad
+    depends_on:
+      - db
+
 volumes:
   actionpad_data:
