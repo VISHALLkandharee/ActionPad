@@ -1,18 +1,11 @@
-
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { extractFromNotes } from "@/lib/extract";
 
 const Body = z.object({ text: z.string().trim().min(10).max(8000) });
 
 // Which columns we send back to the page.
-const fields = {
-  id: true,
-  title: true,
-  summary: true,
-  action_items: true,
-  created_at: true,
-} as const;
+const fields = "id, title, summary, action_items, created_at";
 
 export async function POST(req: Request) {
   let json: unknown;
@@ -33,17 +26,20 @@ export async function POST(req: Request) {
   try {
     const result = await extractFromNotes(parsed.data.text);
 
-    const note = await prisma.notes.create({
-      data: {
+    const { data, error } = await supabase
+      .from("notes")
+      .insert({
         raw_text: parsed.data.text,
         title: result.title,
         summary: result.summary,
-        action_items: result.actionItems,
-      },
-      select: fields,
-    });
+        action_items: result.actionItems, // no JSON.stringify needed
+      })
+      .select(fields)
+      .single();
 
-    return Response.json({ note });
+    if (error) throw error;
+
+    return Response.json({ note: data });
   } catch (err) {
     console.error(err);
     return Response.json(
@@ -55,18 +51,100 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const notes = await prisma.notes.findMany({
-      orderBy: { created_at: "desc" },
-      take: 20,
-      select: fields,
-    });
+    const { data, error } = await supabase
+      .from("notes")
+      .select(fields)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-    return Response.json({ notes });
+    if (error) throw error;
+
+    return Response.json({ notes: data });
   } catch (err) {
     console.error(err);
     return Response.json({ error: "Could not load notes." }, { status: 500 });
   }
 }
+
+
+
+
+
+
+
+
+
+
+//prisma --- code
+
+// import { z } from "zod";
+// import { prisma } from "@/lib/prisma";
+// import { extractFromNotes } from "@/lib/extract";
+
+// const Body = z.object({ text: z.string().trim().min(10).max(8000) });
+
+// // Which columns we send back to the page.
+// const fields = {
+//   id: true,
+//   title: true,
+//   summary: true,
+//   action_items: true,
+//   created_at: true,
+// } as const;
+
+// export async function POST(req: Request) {
+//   let json: unknown;
+//   try {
+//     json = await req.json();
+//   } catch {
+//     return Response.json({ error: "Invalid request" }, { status: 400 });
+//   }
+
+//   const parsed = Body.safeParse(json);
+//   if (!parsed.success) {
+//     return Response.json(
+//       { error: "Please paste between 10 and 8000 characters." },
+//       { status: 400 }
+//     );
+//   }
+
+//   try {
+//     const result = await extractFromNotes(parsed.data.text);
+
+//     const note = await prisma.notes.create({
+//       data: {
+//         raw_text: parsed.data.text,
+//         title: result.title,
+//         summary: result.summary,
+//         action_items: result.actionItems,
+//       },
+//       select: fields,
+//     });
+
+//     return Response.json({ note });
+//   } catch (err) {
+//     console.error(err);
+//     return Response.json(
+//       { error: "Something went wrong. Try again." },
+//       { status: 500 }
+//     );
+//   }
+// }
+
+// export async function GET() {
+//   try {
+//     const notes = await prisma.notes.findMany({
+//       orderBy: { created_at: "desc" },
+//       take: 20,
+//       select: fields,
+//     });
+
+//     return Response.json({ notes });
+//   } catch (err) {
+//     console.error(err);
+//     return Response.json({ error: "Could not load notes." }, { status: 500 });
+//   }
+// }
 
 
 
